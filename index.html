@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+<title>Focus Desk</title>
+<style>
+@font-face{font-family:"Press Start 2P";src:url("fonts/PressStart2P.ttf")}
+:root,[data-theme=classic]{--bg:#14201f;--panel:#1c2c2a;--line:#2e4441;--text:#e8efe6;--mute:#8fa8a2;--gold:#f2c14e;--water:#6cc0e5;--ok:#7fd1a0;--on-accent:#14201f;--on-water:#0d2530;--r:6px;--r2:10px;--fs:14px;--font:"Segoe UI",system-ui,sans-serif;--hdr:#14201f;--hdr-text:#e8efe6;--shadow:none}
+[data-theme=light]{--bg:#f2f4f7;--panel:#ffffff;--line:#d3d9e2;--text:#1b2230;--mute:#65708a;--gold:#2563eb;--water:#0ea5e9;--ok:#16a34a;--on-accent:#ffffff;--on-water:#ffffff;--hdr:#ffffff;--hdr-text:#1b2230}
+[data-theme=dark]{--bg:#0e1014;--panel:#171a20;--line:#2a2f39;--text:#e6e9ee;--mute:#8a93a3;--gold:#7c9cff;--water:#4cc3f0;--ok:#5fd394;--on-accent:#0e1014;--on-water:#0e1014;--hdr:#0e1014;--hdr-text:#e6e9ee}
+[data-theme=retro]{--bg:#0d1216;--panel:#171f27;--line:#2f86b8;--text:#e8f1f7;--mute:#86a9c0;--gold:#e63946;--water:#f5b25c;--ok:#6ee7a0;--on-accent:#ffffff;--on-water:#3a2a10;--r:0px;--r2:0px;--fs:11px;--font:"Press Start 2P","Courier New",monospace;--hdr:#2f86b8;--hdr-text:#ffffff;--shadow:4px 4px 0 #05080b}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--text);font:var(--fs)/1.4 var(--font);height:100vh;overflow:hidden}
+button{font:inherit;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--text);border-radius:var(--r);padding:5px 10px}
+button:hover{border-color:var(--gold)}button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--gold);outline-offset:1px}
+button.primary{background:var(--gold);color:var(--on-accent);border-color:var(--gold);font-weight:600}
+input,select,textarea{font:inherit;width:auto;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:var(--r);padding:6px 8px}
+.muted{color:var(--mute)}.done .t{text-decoration:line-through;color:var(--mute)}
+#toast{position:fixed;left:8px;right:8px;bottom:8px;background:var(--water);color:var(--on-water);padding:8px 10px;border-radius:var(--r2);font-weight:600;display:none;z-index:9}
+.app{display:flex;flex-direction:column;height:100vh}
+header{background:var(--hdr);color:var(--hdr-text);display:flex;flex-wrap:wrap;align-items:center;gap:6px;padding:14px 20px;border-bottom:1px solid var(--line);position:relative}
+header h1{font-size:18px;margin-right:auto;font-weight:700;white-space:nowrap}
+.tab.on{background:var(--gold);color:var(--on-accent);border-color:var(--gold)}
+main{flex:1;overflow:auto;padding:20px;max-width:760px;width:100%;margin:0 auto}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r2);padding:12px 14px;margin-bottom:10px}
+.card h3{font-size:1em;margin-bottom:2px}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}.grow{flex:1}
+.add{margin-bottom:18px}.add .row{margin-bottom:8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{font-size:.85em;background:var(--bg);border:1px solid var(--line);border-radius:99px;padding:2px 9px;color:var(--mute)}
+.badge{font-size:.85em;border-radius:99px;padding:1px 8px;background:var(--bg);border:1px solid var(--line)}
+.badge.doing{border-color:var(--gold);color:var(--gold)}.badge.done{border-color:var(--ok);color:var(--ok)}
+.dots{display:flex;flex-wrap:wrap;gap:4px;margin-top:10px}.dot{width:12px;height:12px;border-radius:3px;background:var(--bg);border:1px solid var(--line)}.dot.on{background:var(--water);border-color:var(--water)}
+.heat{display:grid;grid-auto-flow:column;grid-template-rows:repeat(7,9px);grid-auto-columns:9px;gap:2px;margin-top:12px;overflow-x:auto;padding-bottom:2px}
+.heat i{background:var(--bg);border:1px solid var(--line)}.heat .hon{background:var(--ok);border-color:var(--ok)}.heat .hsk{background:var(--water);border-color:var(--water)}.heat .fut{visibility:hidden}
+.empty{color:var(--mute);padding:24px 0;text-align:center}
+textarea{width:100%;margin-top:8px;resize:vertical}
+.timer{text-align:center;padding:30px 14px}.timer .big{font-size:76px;font-weight:700;letter-spacing:2px;font-variant-numeric:tabular-nums;margin:6px 0 18px}
+.timer .row{justify-content:center}.mode-focus .big{color:var(--gold)}.mode-break .big{color:var(--water)}
+.themes{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px}
+.theme{display:flex;align-items:center;gap:8px;padding:8px}.theme.on{border:2px solid var(--gold)}
+.sw{width:22px;height:22px;border:1px solid var(--line);flex:none}
+[data-theme=light] .card,[data-theme=light] button{box-shadow:0 1px 2px rgba(20,30,50,.08)}
+/* Spidey arcade */
+.hang{display:none}
+[data-theme=retro] body{border:8px solid #2f86b8;background:radial-gradient(ellipse at top,#22303a,#0d1216 70%)}
+[data-theme=retro] body::after{content:"";position:fixed;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 1px,transparent 1px 3px)}
+[data-theme=retro] .card{border:3px solid var(--line);box-shadow:var(--shadow),inset 0 0 0 2px #0b3a5a}
+[data-theme=retro] button{background:#f4f7fa;color:#0b3a5a;border:2px solid #0b3a5a;box-shadow:0 3px 0 #0b3a5a}
+[data-theme=retro] button:active{transform:translateY(3px);box-shadow:none}
+[data-theme=retro] button.primary,[data-theme=retro] .tab.on{background:var(--gold);color:#fff;border-color:#7a1420;box-shadow:0 3px 0 #7a1420}
+[data-theme=retro] header,[data-theme=retro] .w .bar{border-bottom:4px solid #0b3a5a;box-shadow:inset 0 -3px 0 #1f6a96}
+[data-theme=retro] h1{font-size:14px;text-shadow:2px 2px 0 #0b3a5a}
+[data-theme=retro] .chip{background:var(--water);color:var(--on-water);border:2px solid #b57a2a;border-radius:0}
+[data-theme=retro] .badge,[data-theme=retro] .dot{border-radius:0}
+[data-theme=retro] .timer .big{font-size:48px;text-shadow:3px 3px 0 #7a1420}
+[data-theme=retro] #toast{background:var(--water);border:3px solid #b57a2a}
+[data-theme=retro] .hang{display:inline-block;position:relative;margin:0 10px;vertical-align:middle;transform-origin:50% -60px;animation:swing 3.2s ease-in-out infinite}
+[data-theme=retro] .hang svg{display:block}
+[data-theme=retro] .thread{position:absolute;left:50%;bottom:100%;height:60px;width:2px;background:#fff;transform:translateX(-50%)}
+@keyframes swing{0%,100%{transform:rotate(-5deg)}50%{transform:rotate(5deg)}}
+@media (prefers-reduced-motion:reduce){.hang{animation:none!important}}
+/* widget */
+.w{display:flex;flex-direction:column;height:100vh}
+.w .bar{background:var(--hdr);color:var(--hdr-text);display:flex;align-items:center;gap:6px;padding:8px 10px;height:44px;border-bottom:1px solid var(--line);-webkit-app-region:drag;flex:none}
+.w .bar b{flex:1;white-space:nowrap}.w .bar button{-webkit-app-region:no-drag;padding:2px 8px}
+.w .body{flex:1;overflow:auto;padding:8px 10px}
+.w h3{font-size:.9em;color:var(--mute);font-weight:600;margin:8px 0 4px}
+.w .item{display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid var(--line)}
+.w .item .t{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.w .item button{padding:1px 8px;font-size:.9em}
+.w input#qa{width:100%}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<div id="toast"></div>
+<script>
+const view = new URLSearchParams(location.search).get('view');
+let data = { tasks: [], habits: [], templates: [], water: {}, daily: {}, settings: { waterMins: 60 } };
+let pomo = { mode: 'focus', remaining: 1500, running: false, sessions: 0, taskId: null, totals: {} };
+let tab = 'tasks', draftItems = [], collapsed = false, filter = 'all', tplName = '';
+let draft = { title: '', due: '', prio: '2' };
+const $ = s => document.querySelector(s);
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const dayKey = (d = new Date()) => { const z = new Date(d); z.setMinutes(z.getMinutes() - z.getTimezoneOffset()); return z.toISOString().slice(0, 10); };
+const today = () => dayKey();
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const persist = () => window.api.save(data);
+const save = () => { persist(); render(); };
+const fmt = s => String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
+const dur = s => s >= 3600 ? Math.floor(s / 3600) + 'h ' + Math.round(s % 3600 / 60) + 'm' : Math.max(1, Math.round(s / 60)) + 'm';
+const modeName = { focus: 'Focus', break: 'Short break', long: 'Long break' };
+const PR = { 1: 'High', 2: 'Medium', 3: 'Low' };
+const TABS = [['today', 'Today'], ['tasks', 'Tasks'], ['habits', 'Habits'], ['pomodoro', 'Pomodoro'], ['settings', 'Settings']];
+const THEMES = [['classic', 'Classic', '#14201f', '#f2c14e'], ['light', 'Light', '#ffffff', '#2563eb'], ['dark', 'Dark', '#0e1014', '#7c9cff'], ['retro', 'Spidey arcade', '#2f86b8', '#e63946']];
+
+/* pixel art */
+const px = (rows, pal, s = 3) => `<svg viewBox="0 0 ${rows[0].length} ${rows.length}" width="${rows[0].length * s}" height="${rows.length * s}" shape-rendering="crispEdges" aria-hidden="true">${rows.map((r, y) => [...r].map((c, x) => pal[c] ? `<rect x="${x}" y="${y}" width="1" height="1" fill="${pal[c]}"/>` : '').join('')).join('')}</svg>`;
+const MASK = px(['..RRRRRR..', '.RRRRRRRR.', 'RWWRRRRWWR', 'RWWWRRWWWR', 'RWWWRRWWWR', '.RWWRRWWR.', '..RRRRRR..'], { R: '#e63946', W: '#ffffff' }, 3);
+const retro = () => data.settings.theme === 'retro';
+const logo = () => retro() ? `SPIDEY<span class="hang"><i class="thread"></i>${MASK}</span>DESK` : 'Focus Desk';
+
+function norm(d) {
+  d.tasks = d.tasks || []; d.tasks.forEach(t => t.items = t.items || []);
+  d.habits = d.habits || []; d.habits.forEach(h => { h.log = h.log || {}; h.skip = h.skip || {}; h.target = h.target || 0; });
+  d.templates = d.templates || []; d.water = d.water || {}; d.daily = d.daily || {}; d.settings = d.settings || {};
+  return d;
+}
+const dr = () => (data.daily[today()] ||= { goals: ['', '', ''], done: [false, false, false], note: '' });
+const waterN = () => data.water[today()] || 0;
+function drink(d = 1) { data.water[today()] = Math.max(0, waterN() + d); save(); }
+
+function setTheme(t) { data.settings.theme = t; save(); }
+function saveSettings() {
+  const s = data.settings, n = (id, d) => Math.max(1, +$(id).value || d), lines = id => $(id).value.split('\n').map(x => x.trim()).filter(Boolean);
+  s.waterMins = n('#wMins', 60); s.waterGoal = n('#wGoal', 8); s.focusMins = n('#fMins', 25); s.breakMins = n('#bMins', 5); s.longBreakMins = n('#lMins', 15);
+  s.autoStart = $('#aOn').checked; s.sound = $('#sOn').checked; s.widgetOpacity = Math.min(1, Math.max(.3, +$('#wOp').value || 1));
+  s.blockGames = $('#bOn').checked; s.blockOnlyFocus = $('#bFocus').checked; s.blockList = lines('#bList');
+  s.blockSites = $('#siOn').checked; s.blockSitesAlways = $('#siAll').checked; s.siteList = lines('#siList');
+  save(); showToast('Settings saved');
+}
+
+/* habits */
+const monday = d => { const x = new Date(d); x.setDate(x.getDate() - (x.getDay() + 6) % 7); x.setHours(0, 0, 0, 0); return x; };
+const weekDays = d => [...Array(7)].map((_, i) => { const x = monday(d); x.setDate(x.getDate() + i); return dayKey(x); });
+const weekCount = (h, d = new Date()) => weekDays(d).filter(k => h.log[k]).length;
+function streak(h) {
+  let n = 0, d = new Date();
+  if (h.target > 0) {
+    if (weekCount(h, d) >= h.target) n++;
+    d.setDate(d.getDate() - 7);
+    while (weekCount(h, d) >= h.target) { n++; d.setDate(d.getDate() - 7); }
+    return n;
+  }
+  if (!h.log[dayKey(d)]) d.setDate(d.getDate() - 1);
+  while (h.log[dayKey(d)] || h.skip[dayKey(d)]) { if (h.log[dayKey(d)]) n++; d.setDate(d.getDate() - 1); }
+  return n;
+}
+function heat(h) {
+  const start = monday(new Date()); start.setDate(start.getDate() - 7 * 25), now = new Date();
+  let c = '';
+  for (let i = 0; i < 182; i++) {
+    const d = new Date(start); d.setDate(start.getDate() + i);
+    if (d > now) { c += '<i class="fut"></i>'; continue; }
+    const k = dayKey(d); c += `<i class="${h.log[k] ? 'hon' : h.skip[k] ? 'hsk' : ''}" title="${k}"></i>`;
+  }
+  return `<div class="heat" aria-label="Last 26 weeks">${c}</div>`;
+}
+function toggleHabit(id) {
+  const h = data.habits.find(x => x.id === id), k = today();
+  if (h.log[k]) delete h.log[k]; else { h.log[k] = true; delete h.skip[k]; } save();
+}
+function freeze(id) {
+  const h = data.habits.find(x => x.id === id), k = today();
+  if (h.skip[k]) delete h.skip[k];
+  else {
+    if (weekDays(new Date()).filter(x => h.skip[x]).length >= 2) return showToast('Two freezes per week is the limit');
+    delete h.log[k]; h.skip[k] = true;
+  }
+  save();
+}
+function delHabit(id) { if (confirm('Delete this habit and its history?')) { data.habits = data.habits.filter(h => h.id !== id); save(); } }
+function addHabit() {
+  const name = $('#hName').value.trim(); if (!name) return;
+  data.habits.push({ id: uid(), name, log: {}, skip: {}, target: +$('#hTarget').value, remind: $('#hRemind').value }); save();
+}
+
+/* tasks */
+const overdue = t => t.due && t.status !== 'done' && t.due < today();
+const cmp = (a, b) => (overdue(b) ? 1 : 0) - (overdue(a) ? 1 : 0) || (a.prio || 2) - (b.prio || 2) || String(a.due || '9999').localeCompare(b.due || '9999');
+const logged = id => { const x = pomo.totals && pomo.totals[id]; return x ? `${dur(x.secs)} in ${x.n} session${x.n === 1 ? '' : 's'}` : ''; };
+function startTask(id) {
+  const t = data.tasks.find(x => x.id === id); if (!t) return;
+  t.status = 'doing'; window.api.launch(t.items); window.api.pomoTask(id); save();
+}
+function focusTask(id) { window.api.pomoTask(id); if (!pomo.running) window.api.pomo('toggle'); }
+function toggleDone(id) { const t = data.tasks.find(x => x.id === id); t.status = t.status === 'done' ? 'todo' : 'done'; save(); }
+function delTask(id) { data.tasks = data.tasks.filter(t => t.id !== id); save(); }
+function addTask() {
+  const title = draft.title.trim(); if (!title) return;
+  data.tasks.unshift({ id: uid(), title, status: 'todo', items: draftItems, due: draft.due, prio: +draft.prio });
+  draftItems = []; draft = { title: '', due: '', prio: '2' }; save();
+}
+function quickAdd(el) {
+  const v = el.value.trim(); if (!v) return;
+  data.tasks.unshift({ id: uid(), title: v, status: 'todo', items: [], due: '', prio: 2 }); save();
+}
+function addDraftItem() {
+  const v = $('#iVal').value.trim(); if (!v) return;
+  draftItems.push({ type: $('#iType').value, value: v }); render(true);
+}
+function applyTpl(id) {
+  const t = data.templates.find(x => x.id === id); if (!t) return;
+  draftItems = t.items.map(i => ({ ...i })); if (!draft.title) draft.title = t.name; render();
+}
+function saveTpl() {
+  const name = tplName.trim() || draft.title.trim();
+  if (!name || !draftItems.length) return showToast('Give it a name and attach at least one link or app');
+  data.templates.push({ id: uid(), name, items: draftItems.map(i => ({ ...i })) }); tplName = ''; save(); showToast('Template saved');
+}
+function delTpl(id) { data.templates = data.templates.filter(t => t.id !== id); save(); }
+function doExport() { window.api.exportData().then(ok => ok && showToast('Backup saved')); }
+function doImport() {
+  if (!confirm('Replace all current data with the backup file?')) return;
+  window.api.importData().then(ok => showToast(ok ? 'Backup imported' : 'Import cancelled or the file is not a Focus Desk backup'));
+}
+
+const itemChips = t => (t.items || []).map(i => `<span class="chip">${i.type === 'link' ? 'Link' : 'App'}: ${esc(i.value.length > 38 ? i.value.slice(0, 38) + '...' : i.value)}</span>`).join('');
+function taskRow(t) {
+  const label = { todo: 'To do', doing: 'In progress', done: 'Done' }[t.status], lg = logged(t.id), od = overdue(t);
+  return `<div class="card ${t.status === 'done' ? 'done' : ''}">
+    <div class="row"><span class="t grow">${esc(t.title)}</span>${pomo.taskId === t.id ? '<span class="badge doing">Focusing</span>' : ''}<span class="badge ${t.status}">${label}</span></div>
+    <div class="chips"><span class="chip">${PR[t.prio || 2]}</span>${t.due ? `<span class="chip" style="${od ? 'color:#ff6b6b;border-color:#ff6b6b' : ''}">${od ? 'Overdue' : 'Due'} ${t.due}</span>` : ''}${lg ? `<span class="chip">Focus: ${lg}</span>` : ''}${itemChips(t)}</div>
+    <div class="row" style="margin-top:10px">
+      ${t.status !== 'done' ? `<button class="primary" onclick="startTask('${t.id}')">${t.items?.length ? 'Start and open' : 'Start'}</button><button onclick="focusTask('${t.id}')">Focus timer</button>` : ''}
+      <button onclick="toggleDone('${t.id}')">${t.status === 'done' ? 'Reopen' : 'Mark done'}</button>
+      <span class="grow"></span><button onclick="delTask('${t.id}')">Delete</button></div></div>`;
+}
+function habitRow(h) {
+  const done = !!h.log[today()], fro = !!h.skip[today()], wk = h.target > 0;
+  return `<div class="card"><div class="row">
+    <input type="checkbox" ${done ? 'checked' : ''} onchange="toggleHabit('${h.id}')" aria-label="Done today">
+    <span class="grow">${esc(h.name)}</span>
+    <span class="muted">${wk ? `${weekCount(h)}/${h.target} this week, ${streak(h)} wk streak` : `${streak(h)} day streak`}</span></div>
+    <div class="row" style="margin-top:8px">${h.remind ? `<span class="chip">Reminder ${h.remind}</span>` : ''}${fro ? '<span class="chip">Frozen today</span>' : ''}<span class="grow"></span>
+      ${!wk && !done ? `<button onclick="freeze('${h.id}')">${fro ? 'Unfreeze' : 'Freeze today'}</button>` : ''}
+      <button onclick="delHabit('${h.id}')">Delete</button></div>${heat(h)}</div>`;
+}
+
+function renderMain(keepFocus) {
+  const s = data.settings, tasks = data.tasks, D = dr(), n = waterN(), goal = s.waterGoal || 8;
+  const pending = tasks.filter(t => t.status !== 'done' && (filter === 'all' || (t.due && t.due <= today()))).sort(cmp);
+  const doneT = filter === 'all' ? tasks.filter(t => t.status === 'done') : [];
+  const body = tab === 'today' ? `
+    <div class="card"><h3>Top 3 for today</h3>
+      ${[0, 1, 2].map(i => `<div class="row" style="margin-top:8px"><input type="checkbox" ${D.done[i] ? 'checked' : ''} onchange="dr().done[${i}]=this.checked;save()" aria-label="Goal ${i + 1} done"><input class="grow" value="${esc(D.goals[i])}" placeholder="Goal ${i + 1}" onchange="dr().goals[${i}]=this.value;persist()"></div>`).join('')}
+      <textarea rows="4" placeholder="Journal: how did today go?" onchange="dr().note=this.value;persist()">${esc(D.note)}</textarea></div>
+    <div class="card"><div class="row"><span class="grow">Water: ${n} of ${goal} glasses</span><button class="primary" onclick="drink()">+ Glass</button><button onclick="drink(-1)">-1</button></div>
+      <div class="dots">${[...Array(Math.max(goal, n))].map((_, i) => `<span class="dot ${i < n ? 'on' : ''}"></span>`).join('')}</div></div>
+    <div class="card"><span class="muted">Focus sessions finished today: ${pomo.sessions}</span></div>`
+  : tab === 'tasks' ? `
+    <div class="card add">
+      <div class="row"><input id="tTitle" class="grow" value="${esc(draft.title)}" placeholder="New task, e.g. DSA lecture" oninput="draft.title=this.value" onkeydown="if(event.key==='Enter')addTask()"></div>
+      <div class="row"><input type="date" value="${draft.due}" onchange="draft.due=this.value" aria-label="Due date">
+        <select onchange="draft.prio=this.value" aria-label="Priority">${[1, 2, 3].map(p => `<option value="${p}" ${+draft.prio === p ? 'selected' : ''}>${PR[p]} priority</option>`).join('')}</select>
+        <select onchange="applyTpl(this.value)" aria-label="Template"><option value="">Use template...</option>${data.templates.map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('')}</select></div>
+      <div class="row">
+        <select id="iType"><option value="link">Link</option><option value="app">App / command</option></select>
+        <input id="iVal" class="grow" placeholder="https://youtube.com/...  or  code  or  chrome" onkeydown="if(event.key==='Enter')addDraftItem()">
+        <button onclick="addDraftItem()">Attach</button></div>
+      <div class="chips">${draftItems.map(i => `<span class="chip">${i.type}: ${esc(i.value)}</span>`).join('')}</div>
+      <div class="row" style="margin-top:10px"><button class="primary" onclick="addTask()">Add task</button><span class="grow"></span>
+        <input value="${esc(tplName)}" placeholder="Template name" oninput="tplName=this.value"><button onclick="saveTpl()">Save attachments as template</button></div>
+    </div>
+    <div class="row" style="margin-bottom:10px"><button class="tab ${filter === 'all' ? 'on' : ''}" onclick="filter='all';render()">All</button><button class="tab ${filter === 'today' ? 'on' : ''}" onclick="filter='today';render()">Due today or overdue</button></div>
+    ${pending.length ? pending.map(taskRow).join('') : '<div class="empty">No open tasks here. Add one above.</div>'}
+    ${doneT.length ? `<h3 class="muted" style="margin:16px 0 8px">Completed</h3>${doneT.map(taskRow).join('')}` : ''}`
+  : tab === 'habits' ? `
+    <div class="card add"><div class="row"><input id="hName" class="grow" placeholder="New habit, e.g. Read 20 pages" onkeydown="if(event.key==='Enter')addHabit()">
+      <select id="hTarget" aria-label="Target"><option value="0">Every day</option>${[1, 2, 3, 4, 5, 6].map(i => `<option value="${i}">${i}x per week</option>`).join('')}</select>
+      <input id="hRemind" type="time" aria-label="Reminder time"><button class="primary" onclick="addHabit()">Add habit</button></div></div>
+    ${data.habits.length ? data.habits.map(habitRow).join('') : '<div class="empty">No habits yet. Add one above.</div>'}`
+  : tab === 'pomodoro' ? `
+    <div class="card timer mode-${pomo.mode === 'focus' ? 'focus' : 'break'}">
+      <div class="row" style="margin-bottom:10px"><span class="muted">Working on</span><select onchange="window.api.pomoTask(this.value)"><option value="">No task</option>${tasks.filter(t => t.status !== 'done').map(t => `<option value="${t.id}" ${pomo.taskId === t.id ? 'selected' : ''}>${esc(t.title)}</option>`).join('')}</select></div>
+      <div class="muted">${modeName[pomo.mode]}</div><div class="big" data-time>${fmt(pomo.remaining)}</div>
+      <div class="row"><button class="primary" onclick="window.api.pomo('toggle')">${pomo.running ? 'Pause' : 'Start'}</button>
+        <button onclick="window.api.pomo('reset')">Reset</button><button onclick="window.api.pomo('skip')">Skip</button></div>
+      <p class="muted" style="margin-top:16px">Focus sessions finished today: ${pomo.sessions}${pomo.taskId && logged(pomo.taskId) ? `<br><br>This task so far: ${logged(pomo.taskId)}` : ''}</p></div>`
+  : `<div class="card"><div class="themes">${THEMES.map(([id, name, a, b]) => `<button class="theme ${(s.theme || 'classic') === id ? 'on' : ''}" onclick="setTheme('${id}')"><span class="sw" style="background:linear-gradient(90deg,${a} 50%,${b} 50%)"></span>${name}</button>`).join('')}</div></div>
+    <div class="card"><div class="row"><span class="grow">Water reminder every</span>
+      <input id="wMins" type="number" min="1" value="${s.waterMins}" style="width:80px"><span>minutes</span><button onclick="window.api.testWater()">Test</button></div>
+      <div class="row" style="margin-top:8px"><span class="grow">Daily water goal</span><input id="wGoal" type="number" min="1" value="${s.waterGoal || 8}" style="width:80px"><span>glasses</span></div></div>
+    <div class="card"><div class="row"><span class="grow">Pomodoro (minutes)</span>
+      <label class="muted">Focus <input id="fMins" type="number" min="1" value="${s.focusMins}" style="width:64px"></label>
+      <label class="muted">Break <input id="bMins" type="number" min="1" value="${s.breakMins}" style="width:64px"></label>
+      <label class="muted">Long <input id="lMins" type="number" min="1" value="${s.longBreakMins}" style="width:64px"></label></div></div>
+    <div class="card"><label class="row"><input type="checkbox" id="sOn" ${s.sound !== false ? 'checked' : ''}> Play a sound when a timer or water reminder fires</label>
+      <div class="row" style="margin-top:8px"><span class="grow">Widget opacity</span><input id="wOp" type="range" min="0.3" max="1" step="0.05" value="${s.widgetOpacity || 1}"></div></div>
+    <div class="card"><label class="row"><input type="checkbox" id="aOn" ${s.autoStart ? 'checked' : ''}> Start Focus Desk when my PC turns on</label>
+      <p class="muted" style="margin-top:6px">Works after you install the app (npm run build). Closing the window keeps the app running in the system tray; quit from the tray menu.</p></div>
+    <div class="card">
+      <label class="row"><input type="checkbox" id="bOn" ${s.blockGames ? 'checked' : ''}> Close games as soon as I open them</label>
+      <label class="row" style="margin-top:6px"><input type="checkbox" id="bFocus" ${s.blockOnlyFocus ? 'checked' : ''}> Only while a focus session is running</label>
+      <textarea id="bList" rows="6">${esc(s.blockList.join('\n'))}</textarea>
+      <p class="muted" style="margin-top:6px">One program per line, exactly as shown in Task Manager > Details (for example cs2.exe).</p></div>
+    <div class="card">
+      <label class="row"><input type="checkbox" id="siOn" ${s.blockSites ? 'checked' : ''}> Block distracting websites</label>
+      <label class="row" style="margin-top:6px"><input type="checkbox" id="siAll" ${s.blockSitesAlways ? 'checked' : ''}> Block all the time, not just during focus sessions</label>
+      <textarea id="siList" rows="5">${esc((s.siteList || []).join('\n'))}</textarea>
+      <p class="muted" style="margin-top:6px">One site per line. This edits your hosts file, so run Focus Desk as administrator. Restart your browser if a site stays open.</p></div>
+    <div class="card"><div class="row"><span class="grow">Backup</span><button onclick="doExport()">Export backup</button><button onclick="doImport()">Import backup</button></div>
+      <p class="muted" style="margin-top:8px">A copy of data.json is also kept automatically each time the app starts.</p>
+      ${data.templates.length ? `<h3 style="margin-top:12px">Templates</h3>${data.templates.map(t => `<div class="row" style="margin-top:6px"><span class="grow">${esc(t.name)} (${t.items.length})</span><button onclick="delTpl('${t.id}')">Delete</button></div>`).join('')}` : ''}</div>
+    <button class="primary" onclick="saveSettings()">Save settings</button>`;
+  const focusId = keepFocus && document.activeElement?.id, val = focusId && document.activeElement.value;
+  $('#root').innerHTML = `<div class="app"><header><h1>${logo()}</h1>
+    ${TABS.map(([id, l]) => `<button class="tab ${tab === id ? 'on' : ''}" onclick="tab='${id}';render()">${l}</button>`).join('')}
+    </header><main>${body}</main></div>`;
+  if (focusId) { const el = document.getElementById(focusId); if (el) { el.value = val; el.focus(); } }
+}
+
+function renderWidget() {
+  const pending = data.tasks.filter(t => t.status !== 'done').sort(cmp), cur = data.tasks.find(t => t.id === pomo.taskId);
+  $('#root').innerHTML = `<div class="w"><div class="bar">
+    <button onclick="collapsed=!collapsed;window.api.collapse(collapsed);render()" title="${collapsed ? 'Expand' : 'Collapse'}">${collapsed ? '&#9662;' : '&#9652;'}</button>
+    <b>${retro() ? 'SPIDEY' : 'Focus Desk'}</b><span class="muted" data-time>${fmt(pomo.remaining)}</span><button onclick="window.api.pomo('toggle')" title="Start or pause timer">${pomo.running ? '&#10074;&#10074;' : '&#9654;'}</button><button onclick="window.api.openMain()" title="Open full app">Open</button></div>
+    ${collapsed ? '' : `<div class="body">
+      <input id="qa" placeholder="Quick add a task, press Enter" onkeydown="if(event.key==='Enter')quickAdd(this)">
+      ${cur ? `<div class="muted" style="margin-top:6px">Focusing: ${esc(cur.title)}</div>` : ''}
+      <h3>Tasks</h3>
+      ${pending.length ? pending.map(t => `<div class="item"><span class="t" title="${esc(t.title)}">${esc(t.title)}</span>
+        ${t.status === 'todo' ? `<button onclick="startTask('${t.id}')">Start</button>` : ''}
+        <button onclick="toggleDone('${t.id}')">Done</button></div>`).join('') : '<div class="muted">Nothing pending.</div>'}
+      <h3>Habits today</h3>
+      ${data.habits.length ? data.habits.map(h => `<label class="item"><input type="checkbox" ${h.log[today()] ? 'checked' : ''} onchange="toggleHabit('${h.id}')"><span class="t">${esc(h.name)}</span><span class="muted">${streak(h)}${h.target > 0 ? 'w' : 'd'}</span></label>`).join('') : '<div class="muted">No habits yet.</div>'}
+      <h3>Water</h3>
+      <div class="item"><span class="t">${waterN()} of ${data.settings.waterGoal || 8} glasses</span><button onclick="drink()">+1</button></div>
+    </div>`}</div>`;
+}
+
+function render(keep) {
+  document.documentElement.dataset.theme = data.settings.theme || 'classic';
+  view === 'widget' ? renderWidget() : renderMain(keep);
+}
+
+function beep(kind) {
+  if (view !== 'widget' || data.settings.sound === false) return;
+  const c = new (window.AudioContext || window.webkitAudioContext)(), t0 = c.currentTime;
+  (kind === 'water' ? [880, 1175] : kind === 'focus' ? [660, 880, 1100] : [880, 660]).forEach((f, i) => {
+    const o = c.createOscillator(), g = c.createGain(), t = t0 + i * .2;
+    o.type = retro() ? 'square' : 'sine'; o.frequency.value = f;
+    g.gain.setValueAtTime(.12, t); g.gain.exponentialRampToValueAtTime(.001, t + .18);
+    o.connect(g); g.connect(c.destination); o.start(t); o.stop(t + .19);
+  });
+  setTimeout(() => c.close(), 1500);
+}
+
+let toastTimer;
+function showToast(msg = 'Time to drink water', ms = 4000) {
+  const t = $('#toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.style.display = 'none', ms);
+}
+$('#toast').onclick = () => $('#toast').style.display = 'none';
+
+(async () => {
+  data = norm(await window.api.load());
+  pomo = await window.api.pomoGet();
+  if (view === 'main' && !dr().goals.some(Boolean)) tab = 'today';
+  window.api.onPomo(p => {
+    const changed = p.mode !== pomo.mode || p.running !== pomo.running || p.sessions !== pomo.sessions || p.taskId !== pomo.taskId;
+    pomo = p;
+    document.querySelectorAll('[data-time]').forEach(e => e.textContent = fmt(p.remaining));
+    if (changed && (view === 'widget' || ['pomodoro', 'tasks'].includes(tab))) render(true);
+  });
+  window.api.onPomoEnd(beep);
+  window.api.onChange(d => { data = norm(d); render(); });
+  window.api.onWater(() => { showToast('Time to drink water', 15000); beep('water'); });
+  render();
+})();
+</script>
+</body>
+</html>
